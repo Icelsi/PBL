@@ -31,7 +31,8 @@ void onButtonBPressed()
   pressCountB++;                                         // add 1 to the count
   Serial.print("Help requested (interrupt). Count = ");  // print the text...
   Serial.println(pressCountB);                           // ...then the number
-  statusByte = 0b00100000;                               // Bit 2
+  uint8_t maskHelp = 1 << 2;                             // Set Bit 2 to HIGH
+  statusByte |= maskHelp;
   Serial.print("Status Byte = ");
   Serial.println(statusByte, BIN);
 }
