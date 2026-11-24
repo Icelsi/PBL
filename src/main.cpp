@@ -1,4 +1,5 @@
 #include <Arduino.h>
+
 // Libraries
 #include <SPI.h>
 #include <MFRC522.h>
@@ -8,7 +9,6 @@
 #include <SPI.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
-
 // Global variables
   // RFID 
     #define RFID_SS  5
@@ -29,6 +29,9 @@
     #define OLED_DC   9
     #define OLED_CS   10
     #define OLED_RST 8 
+  // POTENTIOMETER
+    int potValue;
+    int potPin = 34; 
     
 
 
@@ -186,7 +189,7 @@ void loop()
   display.print("Temperature: ");
   display.print(temperature);
   display.println(" C");
-  
+  delay(2000);
 
 
 
