@@ -29,6 +29,8 @@
     #define OLED_DC   9
     #define OLED_CS   10
     #define OLED_RST 8 
+    const int TEMPERATURE_SAMPLES = 10; 
+    int samples[TEMPERATURE_SAMPLES]; 
   // POTENTIOMETER
     int potValue;
     int potPin = 34; 
@@ -53,6 +55,20 @@ Adafruit_BMP280 bmp;
 MFRC522 rfid(RFID_SS, RFID_RST);
 
 // Functions
+void takeSamples() { 
+  for (int i = 0; i < TEMPERATURE_SAMPLES; i++) { 
+    // Store one reading in element i (Common Commands: "Read an Analog Pin"). 
+    samples[i] = bmp.readTemperature(); 
+    delay(50); 
+  } 
+} 
+float getAverage() { 
+  long sum = 0;                        // the total starts at 0 
+  for (int i = 0; i < TEMPERATURE_SAMPLES; i++) { 
+    sum = sum + samples[i];          // add element i to the total 
+  } 
+  return (float)sum / TEMPERATURE_SAMPLES;    // (float) keeps the decimals 
+
 
 // getUID() turns the card's UID bytes into text, for example "4A 1F 9C 02"
 String getUID()
@@ -185,10 +201,7 @@ void loop()
     onTimerExpired();
   }
 
-  temperature = bmp.readTemperature();
-  display.print("Temperature: ");
-  display.print(temperature);
-  display.println(" C");
+
   delay(2000);
 
 
