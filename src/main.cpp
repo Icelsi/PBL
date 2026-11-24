@@ -38,6 +38,7 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, OLED_MOSI, OLED_CLK, OLED_
 unsigned long indicatorStart = 0;
 unsigned long indicatorTime = 0;
 bool indicatorOn = false;
+bool roomOccupied = false;
 
 String lastUID = "";
 unsigned long lastScanTime = 0;
@@ -98,6 +99,7 @@ void allIndicatorsOff()
 void onAccessGranted()
 {
   Serial.println("ACCESS GRANTED");
+  roomOccupied = true;
   allIndicatorsOff();
   digitalWrite(GREEN_LED, HIGH);
   startIndicatorTimer(2000);
@@ -108,6 +110,9 @@ void onAccessDenied()
   Serial.println("ACCESS DENIED");
   allIndicatorsOff();
   digitalWrite(RED_LED, HIGH);
+  digitalWrite(RED_LED, LOW);
+  digitalWrite(RED_LED, HIGH);
+  digitalWrite(RED_LED, LOW);  
   startIndicatorTimer(1000);
 }
 
@@ -181,6 +186,7 @@ void loop()
   display.print("Temperature: ");
   display.print(temperature);
   display.println(" C");
+  
 
 
 
