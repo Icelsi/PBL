@@ -1,44 +1,79 @@
 #include <Arduino.h>
 
 //----------Pin numbers----------
+#define BUTTON_BUSY 32
 #define BUTTON_HELP 33
 
 
 //----------Global variables----------
 uint8_t statusByte = 0b00000000;
+uint8_t maskBusy = 1 << 0;                             // Set Bit 0 to HIGH
+uint8_t maskHelp = 1 << 2;                             // Set Bit 2 to HIGH
 
 // These two variables are changed inside the ISR,...
 // ...so they need the keyword for a shared ISR variable.
 // buttonBFlag: raised (true) by the ISR when button B is pressed.
+volatile bool buttonAFlag = false;
 volatile bool buttonBFlag = false;
 
 // lastInterruptB: the time of the last accepted press (used to debounce).
+volatile unsigned long lastInterruptA = 0;
 volatile unsigned long lastInterruptB = 0;
 
 // pressCountB is only used in loop(), so it needs no keyword.
+int pressCountA = 0;
 int pressCountB = 0;
 
 // A Callback is a variable that holds a function (no inputs, returns nothing).
 typedef void (*Callback)();
+Callback buttonACallback;   // what button A does
 Callback buttonBCallback;   // what button B does
+
+//
+unsigned long studyStart = 0;
+const unsigned long STUDY_TIME = 10000;
 
 
 //----------Event handlers and callbacks----------
-// Event handler for button B – called from loop(), never from the ISR,
+// Event handler for button A – called from loop(), never from the ISR,
 // so Serial.print() is allowed here.
-void onButtonBPressed()
+void onButtonAPressed()
 {
   pressCountB++;                                         // add 1 to the count
   Serial.print("Help requested (interrupt). Count = ");  // print the text...
   Serial.println(pressCountB);                           // ...then the number
-  uint8_t maskHelp = 1 << 2;                             // Set Bit 2 to HIGH
   statusByte |= maskHelp;
+  Serial.print("Status Byte = ");
+  Serial.println(statusByte, BIN);
+}
+
+// Event handler for button B – called from loop(), never from the ISR,
+// so Serial.print() is allowed here.
+void onButtonBPressed()
+{
+  pressCountA++;                                         // add 1 to the count
+  Serial.print("Room reserved. Count = ");               // print the text...
+  Serial.println(pressCountA);                           // ...then the number
+  statusByte |= maskBusy;
   Serial.print("Status Byte = ");
   Serial.println(statusByte, BIN);
 }
 
 
 // ---------- Interrupt Service Routines (ISRs) ----------
+// ISR for button A – runs the instant the pin falls, even if loop() is busy.
+// Blank before the name: the keyword that keeps an ISR in fast memory
+// (Common Commands: "ISR Function"). Keep an ISR short: no Serial, no delay().
+void IRAM_ATTR buttonA_ISR()
+{
+  // Ignore presses less than 200 ms apart (debounce inside the ISR).
+  if (millis() - lastInterruptA > 200)
+  {
+    lastInterruptA = millis();  // remember when this press happened
+    buttonAFlag = true;         // raise the flag for loop(): true or false?
+  } 
+} 
+
 // ISR for button B – runs the instant the pin falls, even if loop() is busy.
 // Blank before the name: the keyword that keeps an ISR in fast memory
 // (Common Commands: "ISR Function"). Keep an ISR short: no Serial, no delay().
@@ -60,14 +95,16 @@ void setup() {
 
   //---------Inputs and outputs----------
   pinMode(BUTTON_HELP, INPUT_PULLUP);
-  // pinMode (,);
+  pinMode(BUTTON_BUSY, INPUT_PULLUP);
 
   //----------Interrupts----------
   attachInterrupt(digitalPinToInterrupt(BUTTON_HELP), buttonB_ISR, FALLING);
+  attachInterrupt(digitalPinToInterrupt(BUTTON_BUSY), buttonA_ISR, FALLING);
 
   // Callbacks
   // Under // Callbacks: choose which function each event calls.
   // No brackets here – you store the function, you do not run it.
+  buttonACallback = onButtonAPressed;    // button A must toggle BUSY.
   buttonBCallback = onButtonBPressed;    // button B must toggle HELP.
 }
 
@@ -75,9 +112,25 @@ void setup() {
 void loop() {
   // Button B (interrupt)
   // Flag pattern: did the ISR raise the flag?
+  if (buttonAFlag == true)
+  {
+    buttonAFlag = false;  // lower the flag first, so the press is handled once
+    buttonACallback();    // then call the handler
+  }
+
+  // Button B (interrupt)
+  // Flag pattern: did the ISR raise the flag?
   if (buttonBFlag == true)
   {
-    buttonBFlag = false;   // lower the flag first, so the press is handled once
+    buttonBFlag = false;  // lower the flag first, so the press is handled once
     buttonBCallback();    // then call the handler
+  }
+
+  // Timer
+  // Timer – turn the alarm off when ALARM_TIME has passed since alarmStart.
+  // Use the time since start (Common Commands: "Time Passed").
+  if (buttonAFlag == true && millis() - studyStart >= STUDY_TIME)
+  {
+    Serial.println("Study time expired!");
   }
 }
